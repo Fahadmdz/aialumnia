@@ -1,33 +1,33 @@
 from flask import Flask, render_template, request, redirect, url_for, session
-import os
-import mysql.connector
 from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
+import psycopg2
+import os
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "super_secret_key")
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.secret_key = 'super_secret_key'
 
 # Ensure uploads directory exists
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
-# Email Configuration
+# Email Configuration (use Render Environment Variables)
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'your_email@gmail.com'
-app.config['MAIL_PASSWORD'] = 'your_app_password_here'
+app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")  # Gmail
+app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")  # App Password
 mail = Mail(app)
 
-# Database connection
-
+# Database connection using Render PostgreSQL
 def get_db_connection():
-    return mysql.connector.connect(
-        host="localhost",
-        user="your_mysql_user",
-        password="your_mysql_password",
-        database="ailumina_db"
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        port=os.getenv("DB_PORT", "5432")
     )
 
 @app.route('/')
@@ -51,7 +51,7 @@ def contact():
 
         msg = Message('AiLumina - Contact Message',
                       sender=app.config['MAIL_USERNAME'],
-                      recipients=['your_email@gmail.com'])
+                      recipients=[app.config['MAIL_USERNAME']])
         msg.body = f"From: {name} <{email}>\n\nMessage:\n{message}"
 
         try:
@@ -78,7 +78,7 @@ def join():
 
         msg = Message('AiLumina - New Join Request',
                       sender=app.config['MAIL_USERNAME'],
-                      recipients=['your_email@gmail.com'])
+                      recipients=[app.config['MAIL_USERNAME']])
         msg.body = f"""
 Name: {name}
 Role: {role}
@@ -105,16 +105,23 @@ def register():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed_pw))
+            cursor.execute(
+                "INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
+                (name, email, hashed_pw)
+            )
             conn.commit()
             conn.close()
 
-            msg = Message('Welcome to AiLumina!', sender=app.config['MAIL_USERNAME'], recipients=[email])
+            msg = Message('Welcome to AiLumina!',
+                          sender=app.config['MAIL_USERNAME'],
+                          recipients=[email])
             msg.body = f"Hello {name},\n\nThank you for registering at AiLumina."
             mail.send(msg)
+
             return redirect('/login')
-        except mysql.connector.Error as err:
-            return render_template('register.html', error=f"Error: {err.msg}")
+        except Exception as e:
+            print("Database Error:", e)
+            return render_template('register.html', error=f"Error: {e}")
 
     return render_template('register.html')
 
@@ -161,5 +168,4 @@ def logout():
     return redirect('/')
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=False)
