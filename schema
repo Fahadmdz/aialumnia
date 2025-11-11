@@ -1,0 +1,31 @@
+-- إنشاء قاعدة البيانات إذا لم تكن موجودة
+CREATE DATABASE IF NOT EXISTS ailumina_db;
+USE ailumina_db;
+
+-- جدول المستخدمين (Users)
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100) UNIQUE,
+    password VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- جدول الرسائل من صفحة الاتصال (Contact Form)
+CREATE TABLE IF NOT EXISTS contacts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100),
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- جدول طلبات الانضمام (Join Requests)
+CREATE TABLE IF NOT EXISTS join_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    role VARCHAR(50),
+    use_case TEXT,
+    file_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
